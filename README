@@ -1,0 +1,8 @@
+This was a sample for this issue on github: https://github.com/Microsoft/DACExtensions/issues/23
+
+This takes dacpac's and merges them including the pre/post deploy scripts
+
+Known Issues:
+
+- It doesn't havenl ansi nulls or quoted identifiers on code
+- It doesn't merge refactorlog.xml - if anyone wants this it should be pretty easy to add in, give me a shout
