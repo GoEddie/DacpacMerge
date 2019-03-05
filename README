@@ -6,5 +6,7 @@ Known Issues:
 
 - It doesn't havenl ansi nulls or quoted identifiers on code
 - It doesn't merge refactorlog.xml - if anyone wants this it should be pretty easy to add in, give me a shout
+- If you have any additional references to other dacpacs or master etc, these will be lost so you can use this to add them back in https://github.com/GoEddie/Dacpac-References
+
 
 To use it, build the project the pass a list of paths on the command line, the first path passed in will be the target dacpac and all the rest of the paths (must be to dacpacs) will be the sources and all merged one after the other.
