@@ -22,8 +22,9 @@ namespace MergeEm
             }
 
             var target = args.First<string>();
+            var sources = args.Skip(1).ToArray();
 
-            var merger = new DacpacMerge(args[0]);
+            var merger = new DacpacMerge(args[0], sources);
             merger.Merge();
         }
     }
@@ -61,25 +62,32 @@ namespace MergeEm
                     {
                         var name = obj.Name.ToString();
                         var info = obj.GetSourceInformation();
-                        if(info != null)
+                        if(info != null && !string.IsNullOrWhiteSpace(info.SourceName))
                         {
                             name = info.SourceName;
                         }
 
-                        _target.AddOrUpdateObjects(ast, name, new TSqlObjectOptions());    //WARNING throwing away ansi nulls and quoted identifiers!
-                    }                    
+                        if(!string.IsNullOrWhiteSpace(name) && !name.EndsWith(".xsd"))
+                        {
+                            _target.AddOrUpdateObjects(ast, name, new TSqlObjectOptions());    //WARNING throwing away ansi nulls and quoted identifiers!
+                        }
+                    }
                 }
 
                 using (var package = DacPackage.Load(source))
                 {
-                    pre += new StreamReader(package.PreDeploymentScript).ReadToEnd();
-                    post += new StreamReader(package.PostDeploymentScript).ReadToEnd();
+                    if(!(package.PreDeploymentScript is null))
+                    {
+                        pre += new StreamReader(package.PreDeploymentScript).ReadToEnd();
+                    }
+                    if(!(package.PostDeploymentScript is null))
+                    {
+                        post += new StreamReader(package.PostDeploymentScript).ReadToEnd();
+                    }
                 }
-                
-            }            
+            }
 
             WriteFinalDacpac(_target, pre, post);
-           
         }
 
         private void WriteFinalDacpac(TSqlModel model, string preScript, string postScript)
@@ -102,8 +110,8 @@ namespace MergeEm
         }
 
         private void AddScripts(string pre, string post, string dacpacPath)
-        {            
-            using (var package = Package.Open(_targetPath, FileMode.Open, FileAccess.ReadWrite))
+        {
+            using (var package = Package.Open(dacpacPath, FileMode.Open, FileAccess.ReadWrite))
             {
                 if (!string.IsNullOrEmpty(pre))
                 {
@@ -115,9 +123,8 @@ namespace MergeEm
                     }
                 }
 
-
                 if (!string.IsNullOrEmpty(post))
-                {                    
+                {
                     var part = package.CreatePart(new Uri("/postdeploy.sql", UriKind.Relative), "text/plain");
 
                     using (var stream = part.GetStream())
@@ -126,7 +133,6 @@ namespace MergeEm
                     }
                 }
                 package.Close();
-                
             }
         }
     }
