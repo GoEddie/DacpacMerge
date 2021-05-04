@@ -8,6 +8,7 @@ using System.IO.Packaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace MergeEm
 {
@@ -25,7 +26,7 @@ namespace MergeEm
                     returnCode = 1;
                 }
 
-                var stopwatch = new System.Diagnostics.Stopwatch();
+                var stopwatch = new Stopwatch();
 
                 stopwatch.Start();
 
@@ -37,6 +38,7 @@ namespace MergeEm
 
                 stopwatch.Stop();
 
+                Console.WriteLine("Completed merging {0} dacpacs in {1} seconds.", args.Length - 1, stopwatch.Elapsed.TotalSeconds);
                 Environment.Exit(returnCode);
             }
             catch (Exception e)
@@ -58,10 +60,6 @@ namespace MergeEm
         public DacpacMerge(string target, params string[] sources)
         {
             _sources = sources;
-            _first = new TSqlModel(sources.First());
-            var options = _first.CopyModelOptions();
-
-            _target = new TSqlModel(_first.Version, options);
             _targetPath = target;
         }
 
@@ -72,6 +70,7 @@ namespace MergeEm
 
             foreach (var source in _sources)
             {
+
                 if (!File.Exists(source))
                 {
                     Console.WriteLine("File {0} does not exist and is being skipped.", source);
@@ -79,6 +78,16 @@ namespace MergeEm
                 }
 
                 Console.WriteLine("{0} : Processing dacpac {1}", DateTimeOffset.Now.ToString("o", System.Globalization.CultureInfo.InvariantCulture), source);
+
+                if (source == _sources.First())
+                {
+                    Console.WriteLine("{0}: Copying dacpac options from {1} to {2}", DateTimeOffset.Now.ToString("o", System.Globalization.CultureInfo.InvariantCulture), source, _targetPath);
+
+                    _first = new TSqlModel(_sources.First());
+                    var options = _first.CopyModelOptions();
+
+                    _target = new TSqlModel(_first.Version, options);
+                }
 
                 var model = getModel(source);
                 foreach (var obj in model.GetObjects(DacQueryScopes.UserDefined))
