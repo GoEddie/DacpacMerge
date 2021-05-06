@@ -55,9 +55,6 @@
     <PackageReference Include="Microsoft.SqlServer.DacFx">
       <Version>150.5084.2</Version>
     </PackageReference>
-    <PackageReference Include="ObjectsComparer">
-      <Version>1.4.1</Version>
-    </PackageReference>
     <PackageReference Include="System.IO.Packaging">
       <Version>5.0.0</Version>
     </PackageReference>

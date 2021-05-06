@@ -19,7 +19,7 @@ namespace MergeEm
     {
         static void Main(string[] args)
         {
-            int returnCode = 0;
+            int returnCode = 0; 
 
             try
             {
@@ -219,8 +219,11 @@ namespace MergeEm
 
                 foreach (var header in _globalHeaders)
                 {
-                    var comparer = new ObjectsComparer.Comparer<CustomData>();
-                    var isEqual = comparer.Compare(header, customData, out IEnumerable<Difference> differences);
+
+                    var isEqual = CustomDataEquals(customData, header);
+
+                    //var comparer = new ObjectsComparer.Comparer<CustomData>();
+                    //var isEqual = comparer.Compare(header, customData, out IEnumerable<Difference> differences);
 
                     if (isEqual)
                     {
@@ -235,5 +238,29 @@ namespace MergeEm
                 }
             }
         }
+
+        private bool CustomDataEquals(CustomData object1, CustomData object2)
+        {
+            if (object2.GetType() != object1.GetType()) return false;
+
+            return object1.Category.Equals(object2.Category) 
+                   && ItemsEquals(object1.Items, object2.Items);
+        }
+
+        private bool ItemsEquals(List<Metadata> object1, List<Metadata> object2)
+        {
+            if (object2.GetType() != object1.GetType() || object1.Count != object2.Count) return false;
+
+            var isEqual = true;
+            for (var itemIndex = 0; itemIndex < object1.Count; itemIndex++)
+            {
+                if (object1[0].Name != object2[0].Name || object1[0].Value != object2[0].Value)
+                {
+                    return false;
+                }
+            }
+            return isEqual;
+        }
+
     }
 }
