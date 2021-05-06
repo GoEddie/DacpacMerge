@@ -1,17 +1,20 @@
 ﻿using Microsoft.SqlServer.Dac;
 using Microsoft.SqlServer.Dac.Model;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using ObjectsComparer;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Packaging;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
+
 
 namespace MergeEm
 {
+    using GOEddie.Dacpac.References;
+
     class Program
     {
         static void Main(string[] args)
@@ -39,11 +42,18 @@ namespace MergeEm
                 stopwatch.Stop();
 
                 Console.WriteLine("Completed merging {0} dacpacs in {1} seconds.", args.Length - 1, stopwatch.Elapsed.TotalSeconds);
+#if DEBUG
+                Console.ReadLine();
+#endif
                 Environment.Exit(returnCode);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
+
+#if DEBUG
+                Console.ReadLine();
+#endif
                 Environment.Exit(e.HResult);
             }
         }
@@ -56,6 +66,7 @@ namespace MergeEm
         private TSqlModel _first;
         private string _targetPath;
         private TSqlModel _target;
+        private List<CustomData> _globalHeaders = new List<CustomData>();
 
         public DacpacMerge(string target, params string[] sources)
         {
@@ -79,17 +90,18 @@ namespace MergeEm
 
                 Console.WriteLine("{0} : Processing dacpac {1}", DateTimeOffset.Now.ToString("o", System.Globalization.CultureInfo.InvariantCulture), source);
 
+
                 if (source == _sources.First())
                 {
                     Console.WriteLine("{0}: Copying dacpac options from {1} to {2}", DateTimeOffset.Now.ToString("o", System.Globalization.CultureInfo.InvariantCulture), source, _targetPath);
 
                     _first = new TSqlModel(_sources.First());
                     var options = _first.CopyModelOptions();
-
                     _target = new TSqlModel(_first.Version, options);
                 }
 
                 var model = getModel(source);
+
                 foreach (var obj in model.GetObjects(DacQueryScopes.UserDefined))
                 {
                     TSqlScript ast;
@@ -108,6 +120,9 @@ namespace MergeEm
                         }
                     }
                 }
+
+                AddGlobalCustomData(new HeaderParser(source).GetCustomData()
+                    .Where(x => x.Type != "Assembly").ToList());
 
                 using (var package = DacPackage.Load(source))
                 {
@@ -131,6 +146,14 @@ namespace MergeEm
             metadata.Name = "dacpac";
 
             DacPackageExtensions.BuildPackage(_targetPath, model, metadata);
+
+            var writer = new HeaderWriter(_targetPath, new DacHacFactory());
+            foreach (var customData in _globalHeaders)
+            {
+                writer.AddCustomData(customData);
+            }
+            writer.Close();
+
             AddScripts(preScript, postScript, _targetPath);
             model.Dispose();
         }
@@ -178,6 +201,38 @@ namespace MergeEm
                     }
                 }
                 package.Close();
+            }
+        }
+
+        private void AddGlobalCustomData(List<CustomData> newCustomData)
+        {
+
+            if (_globalHeaders.Count == 0)
+            {
+                _globalHeaders.AddRange(newCustomData);
+                return;
+            }
+
+            foreach (var customData in newCustomData)
+            {
+                var exists = false;
+
+                foreach (var header in _globalHeaders)
+                {
+                    var comparer = new ObjectsComparer.Comparer<CustomData>();
+                    var isEqual = comparer.Compare(header, customData, out IEnumerable<Difference> differences);
+
+                    if (isEqual)
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists)
+                {
+                    _globalHeaders.Add(customData);
+                }
             }
         }
     }
